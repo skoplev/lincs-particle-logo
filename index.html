@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>DCIC</title>
+
+<style type="text/css">
+#logo_img_canvas {
+    display: none;
+}
+</style>
+
+
+</head>
+<body>
+
+<!-- Viewport for the animation -->
+<canvas id="screen" width=1280 height=720></canvas>
+
+<!-- 
+Hidden canvas used for accessing the pixels of the logo.
+Dimensions should match the logo.
+Must be able to contain scaled and centered image.
+-->
+<!-- <canvas id="logo_img_canvas" width=500 height=375></canvas> -->
+
+<audio controls autoplay>
+  <!-- <source src="horse.ogg" type="audio/ogg"> -->
+  
+    <source src="audio/King_Capisce_-_02_-_Never_Spoken_Extended_Edit.mp3" type="audio/mpeg">
+Your browser does not support the audio element.
+</audio>
+
+<canvas id="logo_img_canvas" width=1000 height=750></canvas>
+
+
+<script type="text/javascript">
+
+
+// // Load logo image from .png file
+var logo_img = new Image();
+
+// logo_img.src = "img/DCIC_1000x750.png";  // must be accessed through the same domain as server
+logo_img.src = "img/DCIC_500x375.png";
+// logo_img.src = "img/tiny_logo_sample_20x20.png";  // must be accessed through the same domain as server
+
+// Render particles to screen, the main canvas
+var canvas = document.getElementById('screen');
+
+var particles = [];
+var mouse_pos = {x: 0, y: 0};  // global mouse position on canvas
+
+canvas.addEventListener("mousemove", function(event) {
+    mouse_pos.x = event.clientX;
+    mouse_pos.y = event.clientY;
+});
+
+// extractCanvas
+
+logo_img.onload = function() {
+
+    var scale = 1.5;  // of logo
+
+    // Calculate center
+
+    var x_offset = (1280 - 500 * scale) / 2;
+    var y_offset = (720 - 375 * scale) / 2;
+
+    // Callback function after image has loaded.
+    // Draw to hidden canvas
+    var hcanvas = document.getElementById('logo_img_canvas');
+	var hcontext = hcanvas.getContext('2d');
+	hcontext.drawImage(logo_img, x_offset, y_offset);
+
+    // Get pixel rgba buffer. 0-255
+    logo_buffer = hcontext.getImageData(0, 0, hcanvas.width, hcanvas.height).data;
+
+    // Load pixels as particles
+    for (var i = 0; i < logo_buffer.length; i += 4) {
+        // calculate grid coordinate. Fast
+        var n = Math.floor(i / 4);  // nth pixel
+        // var row = Math.floor(n / hcanvas.width);
+        // var column = n % hcanvas.width;
+
+        var column = Math.floor(n / hcanvas.width);
+        var row = n % hcanvas.width;
+
+        // Check if pixel is non transparent and add as a particle.
+        if (logo_buffer[i + 3] != 0) {
+            // opacity. Pixel is visible, add particle
+            particles.push(
+                {
+                    // Data from
+                    x_rest: row * scale,
+                    y_rest: column * scale,
+                    color:  "rgba("
+                        + logo_buffer[i] + ", "
+                        + logo_buffer[i + 1] + ", " 
+                        + logo_buffer[i + 2] + ", "
+                        + logo_buffer[i + 3] / 255 + ")",
+                }
+            );
+        }
+    }
+
+    console.log(particles.length);
+
+
+    var context = canvas.getContext('2d');
+
+    // Ramdomize particle position and velocity
+    for (var i = 0; i < particles.length; i++) {
+        particles[i].x = Math.random() * canvas.width;
+        particles[i].y = Math.random() * canvas.height;
+        particles[i].dx = Math.random() * 20 - 10;
+        particles[i].dy = Math.random() * 20 - 10;
+    }
+
+    // drawParticle(context, particles[0].x, particles[0].y, 10, particles[0].color);
+    for (var i = 0; i < particles.length; i++) {
+        drawParticle(context, particles[i].x, particles[i].y, scale, particles[i].color);
+    }
+
+    console.log("loading done");
+    // console.log(particles);
+
+    // Timings and animation
+    // last_frame = new Date();
+    // iter = 0;
+    // var interval = setInterval(update, 1000);
+
+    var iteration = 0;
+    var interval = setInterval(function() {
+        iteration++;
+        if (iteration > 2000) {
+            clearInterval(interval);
+        }
+
+        update(iteration);
+
+    }, 33);  // run function every ms. Trying 30 fps
+}
+
+drawParticle = function(context, x, y, size, color) {
+    context.fillStyle = color;
+    context.fillRect(x, y, size, size);
+}
+
+update = function(iter) {
+
+    var spring_const = 0.5;  // Spring constant
+    var damp_const = 0.70;  // between [0, 1] where 1 is no damping
+    // var damp_const = 0.98;  // between [0, 1] where 1 is no damping
+    var mouse_force = 1000.0;  // repulsive force of mouse cursor
+    // var mouse_force = 3000.0;  // repulsive force of mouse cursor
+
+    var dt = 20;  // simulation step size
+
+    var lambda = 0.7;  // perpendicular offshoot strength, eccentricity
+    var text_fade = 0.005;  // lower is longer fade time
+
+
+    // var now = new Date();
+    // var deltaT = now - last_frame;
+
+
+    // console.log(deltaT);
+
+    var canvas = document.getElementById('screen');
+    var context = canvas.getContext('2d');
+
+    // Flush rendering
+    // context.fillStyle = 'rgb(255, 255, 255)';
+    context.fillStyle = 'rgb(250, 250, 250)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Text
+    context.font = "64px Helvetica";
+
+    // context.globalAlpha = 
+
+    var alpha = 1 - 1/(text_fade * iter + 1);  // Fade in
+
+    context.fillStyle = "rgba(150, 150, 150, " + alpha + ")";
+    context.fillText("DCIC", 595, 100);
+    context.fillText("LINCS", 595, 200);
+    context.fillText("BD2K", 595, 300);
+
+
+    // context.fillStyle = "black";
+    context.font = "36px Helvetica";
+    context.fillStyle = "rgb(180, 180, 180, " + alpha + ")";
+    // context.fillText("DATA COORDINATION", 400, 500);
+    // context.fillText("&", 500, 550);
+    // context.fillText("INTEGRATION CENTER", 400, 600);
+
+    context.fillText("DATA COORDINATION", 490, 530);
+    context.fillText("&", 670, 580);
+    context.fillText("INTEGRATION CENTER", 480, 630);
+
+
+
+
+    // Particles loop
+    for (var i = 0; i < particles.length; i++) {
+
+        // Calculate velocity, based on damping from resting position
+        // particles[i].dx = k * (particles[i].x_rest - particles[i].x);
+        // particles[i].dy = k * (particles[i].y_rest - particles[i].y);
+
+        // // Velocity conservation
+        // particles[i].dx = lambda * particles[i].dx + (1 - lambda) * k * (particles[i].x_rest - particles[i].x);
+        // particles[i].dy = lambda * particles[i].dy + (1 - lambda) * k * (particles[i].y_rest - particles[i].y);
+
+        // calculate distance to mouse. Also the force vector.
+        var to_mouse = {
+            x: particles[i].x - mouse_pos.x,
+            y: particles[i].y - mouse_pos.y
+        };
+
+        var dist_to_mouse2 = Math.pow(to_mouse.x, 2) + Math.pow(to_mouse.y, 2);
+
+
+        // Velocity conservation and damping
+        particles[i].dx += spring_const * (particles[i].x_rest - particles[i].x);
+        particles[i].dx -= lambda * (particles[i].y_rest - particles[i].y);  // perpendicular direction to attraction force
+        particles[i].dx += mouse_force * to_mouse.x / dist_to_mouse2;
+        particles[i].dx *= damp_const;
+
+        particles[i].dy += spring_const * (particles[i].y_rest - particles[i].y);
+        particles[i].dy += lambda * (particles[i].x_rest - particles[i].x);
+        particles[i].dy += mouse_force * to_mouse.y / dist_to_mouse2;
+        particles[i].dy *= damp_const;
+
+        // Update position
+        particles[i].x += particles[i].dx / dt;
+        particles[i].y += particles[i].dy / dt;
+
+        // Render to screen
+        drawParticle(context, particles[i].x, particles[i].y, 2.0, particles[i].color);
+    }
+}
+
+</script>
+
+</body>
+</html>

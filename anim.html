@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>LINCS logo animation</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+</head>
+<body>
+<canvas id="screen" width=1280 height=720></canvas>
+
+<script type="text/javascript">
+
+var drawParticle = function(x, y, size, color, opacity) {
+	context.beginPath();
+	context.globalAlpha = opacity;
+	context.arc(x, y, size, 0, 2 * Math.PI);
+	// 
+	context.fillStyle = color;
+	context.fill();
+	// Border
+	context.strokeStyle = color;
+	context.stroke();
+
+}
+
+function update() {
+	// console.log("frame");
+	// context.fillStyle = 'rgba(0,0,0,0.5)';
+	context.fillStyle = 'rgb(255, 255, 255)';
+	// context.fillRect(0, 0, canvas.width, canvas.height);
+
+	// drawParticle(100.0, 200.0, 100.0, "red", 0.5);
+
+	for (var i = 0; i < n_particles; i++) {
+		// Reduce velocity
+		particles[i].vx *= 0.99;
+		particles[i].vy *= 0.99;
+
+		// Update position
+		particles[i].x += particles[i].vx;
+		particles[i].y += particles[i].vx;
+
+		// Draw
+		drawParticle(particles[i].x, particles[i].y, 10.0, particles[i].color, 0.5);
+
+
+		// context.fillStyle = colors[particles[i].color]; // set color
+		// context.beginPath();
+		// context.arc(p[i].x, p[i].y, p[i].r, 0, Math.PI*2, false);
+		// context.fill();
+
+		// console.log(particles[i].y);
+	}
+}
+
+//Lets create a function which will help us to create multiple particles
+function createParticle() {
+	//Random position on the canvas
+	this.x = Math.random() * canvas.width;
+	this.y = Math.random() * canvas.height;
+	
+	//Lets add random velocity to each particle
+	this.vx = Math.random()*20-10;
+	this.vy = Math.random()*20-10;
+	
+	//Random colors
+	var r = Math.random()*255;
+	var g = Math.random()*255;
+	var b = Math.random()*255;
+	this.color = "rgb("+r+", "+g+", "+b+")";
+	// this.color = rgb(r, g, b);
+	// "rgba("+r+", "+g+", "+b+", 0.5)";
+}
+
+$(document).ready(function() {
+	canvas = document.getElementById('screen');
+	context = canvas.getContext('2d');
+	// width = canvas.width;
+	// height = canvas.height;
+
+	// var colors = ['red', 'green', 'yellow', 'orange', 'white', 'purple'];
+
+	n_particles = 1000;  // num of particles
+	particles = [];
+
+	// Init particles
+	for (var i = 0; i < n_particles; i++) {
+		particles.push(new createParticle());
+
+		// particles[i] = {
+		// 	x: canvas.width/2.0,
+		// 	y: canvas.height/2.0,
+		// 	vx: (Math.random()*12.0 - 6.0),
+		// 	vy: (Math.random()*12.0 - 6.0),
+		// 	color: colors[Math.floor(Math.random()*colors.length)]
+		// };
+
+		// if (i > 95) {
+		// console.log(particles[i].y);
+		// }
+	}
+
+	// for (var i = 0; i < n_particles; i++) {
+	// 	console.log(particles[i].y);
+	// }
+	// console.log(particles)
+
+	// console.log(particles[4].y);
+	// drawParticle(100.0, 200.0, 100.0, "red", 0.5);
+	setInterval(update, 10);  // run every 30 ms
+})
+
+</script>
+</body>
+</html>
