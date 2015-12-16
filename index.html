@@ -9,7 +9,6 @@
 }
 </style>
 
-
 </head>
 <body>
 
@@ -24,10 +23,8 @@ Must be able to contain scaled and centered image.
 <!-- <canvas id="logo_img_canvas" width=500 height=375></canvas> -->
 
 <audio controls autoplay>
-  <!-- <source src="horse.ogg" type="audio/ogg"> -->
-  
     <source src="audio/King_Capisce_-_02_-_Never_Spoken_Extended_Edit.mp3" type="audio/mpeg">
-Your browser does not support the audio element.
+    Your browser does not support the audio element.
 </audio>
 
 <canvas id="logo_img_canvas" width=1000 height=750></canvas>
@@ -35,33 +32,50 @@ Your browser does not support the audio element.
 
 <script type="text/javascript">
 
-
-// // Load logo image from .png file
+//  Configuration
+// Load logo image from .png file
 var logo_img = new Image();
-
 // logo_img.src = "img/DCIC_1000x750.png";  // must be accessed through the same domain as server
 logo_img.src = "img/DCIC_500x375.png";
 // logo_img.src = "img/tiny_logo_sample_20x20.png";  // must be accessed through the same domain as server
 
-// Render particles to screen, the main canvas
-var canvas = document.getElementById('screen');
+// Simulation parameters
+var spring_const = 0.5;  // Spring constant
+var damp_const = 0.70;  // between [0, 1] where 1 is no damping
+// var damp_const = 0.98;  // between [0, 1] where 1 is no damping
+var mouse_force = 1000.0;  // repulsive force of mouse cursor
+// var mouse_force = 3000.0;  // repulsive force of mouse cursor
 
-var particles = [];
-var mouse_pos = {x: 0, y: 0};  // global mouse position on canvas
+var dt = 20;  // simulation step size
+
+var lambda = 0.7;  // perpendicular offshoot strength, eccentricity
+var text_fade = 0.005;  // lower is longer fade time
+
+var max_iterations = 2000;
+
+var interval_ms = 10;  // time between update calls
+
+// Other global variables
+// Render particles to screen, the main canvas
+// var canvas = document.getElementById('screen');
+var canvas = document.getElementById('screen');
+var context = canvas.getContext('2d');
 
 canvas.addEventListener("mousemove", function(event) {
     mouse_pos.x = event.clientX;
     mouse_pos.y = event.clientY;
 });
 
-// extractCanvas
+var particles = [];  // list of pixel particles {x, y, dx, dy, color, x_rest, y_rest}
+var mouse_pos = {x: 0, y: 0};  // global mouse position on canvas
 
+
+// extractCanvas
 logo_img.onload = function() {
 
     var scale = 1.5;  // of logo
 
     // Calculate center
-
     var x_offset = (1280 - 500 * scale) / 2;
     var y_offset = (720 - 375 * scale) / 2;
 
@@ -102,12 +116,9 @@ logo_img.onload = function() {
         }
     }
 
-    console.log(particles.length);
-
-
     var context = canvas.getContext('2d');
 
-    // Ramdomize particle position and velocity
+    // Randomize particle position and velocity
     for (var i = 0; i < particles.length; i++) {
         particles[i].x = Math.random() * canvas.width;
         particles[i].y = Math.random() * canvas.height;
@@ -120,24 +131,15 @@ logo_img.onload = function() {
         drawParticle(context, particles[i].x, particles[i].y, scale, particles[i].color);
     }
 
-    console.log("loading done");
-    // console.log(particles);
-
     // Timings and animation
-    // last_frame = new Date();
-    // iter = 0;
-    // var interval = setInterval(update, 1000);
-
     var iteration = 0;
     var interval = setInterval(function() {
         iteration++;
-        if (iteration > 2000) {
+        if (iteration > max_iterations) {
             clearInterval(interval);
         }
-
         update(iteration);
-
-    }, 33);  // run function every ms. Trying 30 fps
+    }, interval_ms);  // run function every ms. Trying 30 fps
 }
 
 drawParticle = function(context, x, y, size, color) {
@@ -147,44 +149,19 @@ drawParticle = function(context, x, y, size, color) {
 
 update = function(iter) {
 
-    var spring_const = 0.5;  // Spring constant
-    var damp_const = 0.70;  // between [0, 1] where 1 is no damping
-    // var damp_const = 0.98;  // between [0, 1] where 1 is no damping
-    var mouse_force = 1000.0;  // repulsive force of mouse cursor
-    // var mouse_force = 3000.0;  // repulsive force of mouse cursor
-
-    var dt = 20;  // simulation step size
-
-    var lambda = 0.7;  // perpendicular offshoot strength, eccentricity
-    var text_fade = 0.005;  // lower is longer fade time
-
-
-    // var now = new Date();
-    // var deltaT = now - last_frame;
-
-
-    // console.log(deltaT);
-
-    var canvas = document.getElementById('screen');
-    var context = canvas.getContext('2d');
-
     // Flush rendering
-    // context.fillStyle = 'rgb(255, 255, 255)';
-    context.fillStyle = 'rgb(250, 250, 250)';
+    context.fillStyle = 'rgb(250, 250, 250)';  // light grey
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     // Text
     context.font = "64px Helvetica";
 
-    // context.globalAlpha = 
-
-    var alpha = 1 - 1/(text_fade * iter + 1);  // Fade in
+    var alpha = 1 - 1/(text_fade * iter + 1);  // Fade-in coefficient
 
     context.fillStyle = "rgba(150, 150, 150, " + alpha + ")";
     context.fillText("DCIC", 595, 100);
     context.fillText("LINCS", 595, 200);
     context.fillText("BD2K", 595, 300);
-
 
     // context.fillStyle = "black";
     context.font = "36px Helvetica";
@@ -197,47 +174,43 @@ update = function(iter) {
     context.fillText("&", 670, 580);
     context.fillText("INTEGRATION CENTER", 480, 630);
 
-
-
-
     // Particles loop
     for (var i = 0; i < particles.length; i++) {
-
-        // Calculate velocity, based on damping from resting position
-        // particles[i].dx = k * (particles[i].x_rest - particles[i].x);
-        // particles[i].dy = k * (particles[i].y_rest - particles[i].y);
-
-        // // Velocity conservation
-        // particles[i].dx = lambda * particles[i].dx + (1 - lambda) * k * (particles[i].x_rest - particles[i].x);
-        // particles[i].dy = lambda * particles[i].dy + (1 - lambda) * k * (particles[i].y_rest - particles[i].y);
+        var point = particles[i];  // shortcut increasing performance
 
         // calculate distance to mouse. Also the force vector.
         var to_mouse = {
-            x: particles[i].x - mouse_pos.x,
-            y: particles[i].y - mouse_pos.y
+            x: point.x - mouse_pos.x,
+            y: point.y - mouse_pos.y
         };
-
         var dist_to_mouse2 = Math.pow(to_mouse.x, 2) + Math.pow(to_mouse.y, 2);
 
-
         // Velocity conservation and damping
-        particles[i].dx += spring_const * (particles[i].x_rest - particles[i].x);
-        particles[i].dx -= lambda * (particles[i].y_rest - particles[i].y);  // perpendicular direction to attraction force
-        particles[i].dx += mouse_force * to_mouse.x / dist_to_mouse2;
-        particles[i].dx *= damp_const;
+        point.dx += spring_const * (point.x_rest - point.x);
+        point.dx -= lambda * (point.y_rest - point.y);  // perpendicular direction to attraction force
+        point.dx += mouse_force * to_mouse.x / dist_to_mouse2;
+        point.dx *= damp_const;
 
-        particles[i].dy += spring_const * (particles[i].y_rest - particles[i].y);
-        particles[i].dy += lambda * (particles[i].x_rest - particles[i].x);
-        particles[i].dy += mouse_force * to_mouse.y / dist_to_mouse2;
-        particles[i].dy *= damp_const;
+        point.dy += spring_const * (point.y_rest - point.y);
+        point.dy += lambda * (point.x_rest - point.x);
+        point.dy += mouse_force * to_mouse.y / dist_to_mouse2;
+        point.dy *= damp_const;
+
 
         // Update position
-        particles[i].x += particles[i].dx / dt;
-        particles[i].y += particles[i].dy / dt;
+        point.x += point.dx / dt;
+        point.y += point.dy / dt;
 
         // Render to screen
-        drawParticle(context, particles[i].x, particles[i].y, 2.0, particles[i].color);
+        drawParticle(context, point.x, point.y, 2.0, point.color);
     }
+
+    // // Optionally sort the particles
+    // if (iter % 10 === 0) {
+    //     particles.sort(
+    //         function(p1, p2) {return((p2.x_rest - p2.x + p2.y_rest - p2.y)) - (p1.x_rest - p1.x + p1.y_rest - p1.y)}
+    //         );
+    // }
 }
 
 </script>
